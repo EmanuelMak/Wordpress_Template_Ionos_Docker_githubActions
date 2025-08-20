@@ -1,8 +1,10 @@
-FROM wordpress:6.4.3-php8.1-apache
+# Use PHP version from build argument
+ARG PHP_VERSION=8.3
+FROM wordpress:6.4.3-php${PHP_VERSION}-apache
 
 # Set environment variables
 ENV WORDPRESS_VERSION=6.4.3
-ENV PHP_VERSION=8.1
+ENV PHP_VERSION=${PHP_VERSION}
 
 # Increase PHP memory limit and optimize settings
 RUN echo "memory_limit = 256M" > /usr/local/etc/php/conf.d/memory-limit.ini && \
@@ -30,9 +32,9 @@ RUN mkdir -p /var/www/html/wp-content/themes/custom && \
     chown -R www-data:www-data /var/www/html/wp-content
 
 # Copy custom scripts
-COPY wp-init.sh /usr/local/bin/wp-init.sh
-COPY wp-config-create.sh /usr/local/bin/wp-config-create.sh
-COPY wait-for-db.sh /usr/local/bin/wait-for-db.sh
+COPY scripts/local/wp-init.sh /usr/local/bin/wp-init.sh
+COPY scripts/local/wp-config-create.sh /usr/local/bin/wp-config-create.sh
+COPY scripts/local/wait-for-db.sh /usr/local/bin/wait-for-db.sh
 
 # Make scripts executable
 RUN chmod +x /usr/local/bin/wp-init.sh && \

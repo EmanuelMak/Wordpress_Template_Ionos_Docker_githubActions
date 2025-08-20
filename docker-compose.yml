@@ -10,21 +10,23 @@ services:
     build:
       context: .
       dockerfile: dockerfile.wp
+      args:
+        PHP_VERSION: ${PHP_VERSION}
     container_name: wp
     ports:
       - "8000:80"
     volumes:
-      - ./themes/my-theme:/var/www/html/wp-content/themes/my-theme
+      - ./themes/custom-theme:/var/www/html/wp-content/themes/custom-theme
       - ./media:/var/www/html/wp-content/uploads/custom-media
-      - ./wp-init.sh:/usr/local/bin/wp-init.sh
-      - ./wp-config-create.sh:/usr/local/bin/wp-config-create.sh
-      - ./wait-for-db.sh://usr/local/bin/wait-for-db.sh
+      - ./scripts/local/wp-init.sh:/usr/local/bin/wp-init.sh
+      - ./scripts/local/wp-config-create.sh:/usr/local/bin/wp-config-create.sh
+      - ./scripts/local/wait-for-db.sh:/usr/local/bin/wait-for-db.sh
     command: ["bash", "/usr/local/bin/wp-init.sh"]
     environment:
-      WORDPRESS_DB_HOST: db
-      WORDPRESS_DB_NAME: ${DB_NAME}
-      WORDPRESS_DB_USER: ${DB_USER}
-      WORDPRESS_DB_PASSWORD: ${DB_PASS}
+      WORDPRESS_DB_HOST: ${DEV_DB_HOST}
+      WORDPRESS_DB_NAME: ${DEV_DB_NAME}
+      WORDPRESS_DB_USER: ${DEV_DB_USER}
+      WORDPRESS_DB_PASSWORD: ${DEV_DB_PASS}
       # auto-install settings:
       WORDPRESS_TITLE: ${WORDPRESS_TITLE}
       WORDPRESS_ADMIN_USER: ${WORDPRESS_ADMIN_USER}
@@ -33,7 +35,7 @@ services:
       WP_URL: ${WP_URL}
 
   db:
-    image: mysql:5.7
+    image: ${DB_IMAGE}
     platform: linux/amd64
     container_name: wp-db
     env_file:
@@ -42,10 +44,12 @@ services:
       - db_data:/var/lib/mysql
     restart: always
     environment:
-      MYSQL_DATABASE: ${DB_NAME}
-      MYSQL_USER: ${DB_USER}
-      MYSQL_PASSWORD: ${DB_PASS}
+      MYSQL_DATABASE: ${DEV_DB_NAME}
+      MYSQL_USER: ${DEV_DB_USER}
+      MYSQL_PASSWORD: ${DEV_DB_PASS}
       MYSQL_ROOT_PASSWORD: root
+      # MySQL 8.0 compatibility settings
+      MYSQL_DEFAULT_AUTHENTICATION_PLUGIN: mysql_native_password
 
 volumes:
   db_data:

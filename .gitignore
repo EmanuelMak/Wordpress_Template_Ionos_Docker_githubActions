@@ -1,7 +1,12 @@
+# ========================================
+# WORDPRESS DOCKER DEVELOPMENT SETUP
+# ========================================
+
 # Environment files
 .env
 .env.local
 .env.production
+.env.staging
 
 # WordPress core files (not needed in repo)
 wp-config.php
@@ -11,33 +16,43 @@ wp-content/backup-db/
 wp-content/backups/
 wp-content/blogs.dir/
 wp-content/upgrade/
-wp-content/uploads/
-wp-content/wp-cache-config.php
 
-# Database
-*.sql
-*.sqlite
+# Docker
+.dockerignore
+docker-compose.override.yml
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
+.deploy_paths
+
+# Generated folders (can be safely deleted)
+gen/
+wordpress-core/
+deployment/
+ionos-webhosting/
 
 # Logs
 *.log
 logs/
-error_log
+wp-content/debug.log
 
-# OS generated files
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
+# Database
+*.sql
+*.sql.gz
+backup_*.sql
 
-# IDE files
+# IDE
 .vscode/
 .idea/
 *.swp
 *.swo
-*~
+
+# OS
+.DS_Store
+Thumbs.db
 
 # Node modules (if using build tools)
 node_modules/
@@ -50,34 +65,15 @@ dist/
 build/
 deploy/
 
-# Temporary files
-tmp/
-temp/
-*.tmp
-
-# Docker
-.dockerignore
-
-# Backup files
-backup_*.sql
-*.backup
-
-# WordPress specific
-wp-content/advanced-cache.php
-wp-content/wp-cache-config.php
-wp-content/cache/
-wp-content/blogs.dir/
-wp-content/upgrade/
-wp-content/uploads/
-wp-content/backup-db/
-wp-content/backups/
-wp-content/blogs.dir/
-wp-content/cache/
-wp-content/upgrade/
-wp-content/uploads/
-wp-content/wp-cache-config.php
+# WordPress plugins (if not custom)
+wp-content/plugins/akismet/
 wp-content/plugins/hello.php
 
-# Development files
-*.dev
-*.local
+# WordPress themes (except custom)
+wp-content/themes/twentytwenty*/
+wp-content/themes/twentytwentyone*/
+wp-content/themes/twentytwentytwo*/
+wp-content/themes/twentytwentythree*/
+wp-content/themes/twentytwentyfour*/
+wp-content/themes/twentytwentyfive*/
+

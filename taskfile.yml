@@ -9,6 +9,7 @@ tasks:
   up:build:
     desc: Baut & startet alle Container
     cmds:
+      - ./scripts/utils/generate-db-image.sh
       - docker compose up -d --build
 
   up:build:shell:
@@ -26,11 +27,40 @@ tasks:
     cmds:
       - docker compose down -v --remove-orphans
 
+  clean:gen:
+    desc: Entfernt alle generierten temporären Dateien
+    cmds:
+      - rm -rf gen/
+      - echo "🧹 Gen-Ordner gelöscht"
+
   restart:
     desc: Neustart aller Services
     cmds:
       - task down
       - task up
+
+  db:switch:
+    desc: Wechselt die Datenbank (MySQL/MariaDB) basierend auf .env
+    cmds:
+      - ./scripts/utils/generate-db-image.sh
+      - echo "🔄 Datenbank-Image aktualisiert. Führen Sie 'task up:build' aus, um neu zu starten."
+
+  db:mysql:
+    desc: Setzt lokale DB auf MySQL
+    cmds:
+      - sed -i.bak 's/^DEV_DB_TYPE=.*/DEV_DB_TYPE=MySQL/' .env
+      - sed -i.bak 's/^DEV_DB_VERSION=.*/DEV_DB_VERSION=8.0/' .env
+      - ./scripts/utils/generate-db-image.sh
+      - echo "✅ Lokale DB auf MySQL 8.0 gesetzt"
+
+  db:mariadb:
+    desc: Setzt lokale DB auf MariaDB
+    cmds:
+      - sed -i.bak 's/^DEV_DB_VERSION=.*/DEV_DB_VERSION=11.0/' .env
+      - sed -i.bak 's/^DEV_DB_VERSION=11.0/' .env
+      - sed -i.bak 's/^DEV_DB_TYPE=.*/DEV_DB_TYPE=MariaDB/' .env
+      - ./scripts/utils/generate-db-image.sh
+      - echo "✅ Lokale DB auf MariaDB 11.0 gesetzt"
 
   logs:
     desc: Zeigt Logs aller Container
