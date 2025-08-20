@@ -1,0 +1,134 @@
+version: '3'
+
+tasks:
+  up:
+    desc: Startet alle Container
+    cmds:
+      - docker compose up -d
+
+  up:build:
+    desc: Baut & startet alle Container
+    cmds:
+      - docker compose up -d --build
+
+  up:build:shell:
+    desc: Baut & startet alle Container
+    cmds:
+      - docker compose up --build
+
+  down:
+    desc: Stoppt alle Container
+    cmds:
+      - docker compose down
+
+  clean:
+    desc: Entfernt Container, Volumes, Netzwerke
+    cmds:
+      - docker compose down -v --remove-orphans
+
+  restart:
+    desc: Neustart aller Services
+    cmds:
+      - task down
+      - task up
+
+  logs:
+    desc: Zeigt Logs aller Container
+    cmds:
+      - docker compose logs -f
+
+  wpshell:
+    desc: Öffnet Bash in WordPress-Container
+    cmds:
+      - docker exec -it wp /bin/bash
+
+  dbshell:
+    desc: Öffnet Bash in MySQL-Container
+    cmds:
+      - docker exec -it wp-db /bin/bash
+
+  start:wp:
+    desc: Startet nur den WordPress-Service
+    cmds:
+      - docker compose up wordpress
+
+  start:db:
+    desc: Startet nur den DB-Service
+    cmds:
+      - docker compose up db
+
+  stop:wp:
+    desc: Stoppt nur den WordPress-Service
+    cmds:
+      - docker compose stop wordpress
+
+  stop:db:
+    desc: Stoppt nur den DB-Service
+    cmds:
+      - docker compose stop db
+
+  docker:reset:
+    desc: stop and remove all containers and images
+    cmds:
+      - docker stop $(docker ps -q) || echo "no running containers found"
+      - docker rm $(docker ps -a -q)
+      - docker rmi $(docker images -q)
+
+  build:prod:
+    desc: Erstellt Production-Build für Deployment
+    cmds:
+      - mkdir -p deploy
+      - cp -r themes/ deploy/
+      - cp -r media/ deploy/
+      - cp docker-compose.yml deploy/
+      - cp dockerfile.wp deploy/
+      - cp wp-config-create.sh deploy/
+      - cp wp-init.sh deploy/
+      - cp wait-for-db.sh deploy/
+      - echo "✅ Production build erstellt in deploy/"
+
+  deploy:manual:
+    desc: Manuelles Deployment auf IONOS (erfordert .env Konfiguration)
+    cmds:
+      - task build:prod
+      - echo "📤 Uploading to IONOS..."
+      - scp -r deploy/* $IONOS_USERNAME@$IONOS_HOST:$DEPLOY_PATH
+
+  backup:
+    desc: Erstellt Backup der Datenbank
+    cmds:
+      - docker exec wp-db mysqldump -u root -proot wordpress > backup_$(date +%Y%m%d_%H%M%S).sql
+      - echo "💾 Backup erstellt"
+
+  restore:
+    desc: Stellt Backup wieder her (DATEI als Parameter)
+    params:
+      DATEI: 1
+    cmds:
+      - docker exec -i wp-db mysql -u root -proot wordpress < {{.DATEI}}
+      - echo "🔄 Backup wiederhergestellt"
+
+  test:
+    desc: Führt alle Tests aus
+    cmds:
+      - ./tests/test-suite.sh
+
+  test:wp-cli:
+    desc: Testet WP-CLI Funktionalität
+    cmds:
+      - echo "🧪 Testing WP-CLI..."
+      - docker exec wp wp --version --allow-root
+      - docker exec wp wp core is-installed --allow-root
+      - docker exec wp wp theme list --allow-root
+      - echo "✅ WP-CLI tests completed"
+
+  test:performance:
+    desc: Führt Performance-Tests aus
+    cmds:
+      - ./tests/performance-test.sh
+
+  test:all:
+    desc: Führt alle Tests aus (Funktionalität + Performance)
+    cmds:
+      - task test
+      - task test:performance

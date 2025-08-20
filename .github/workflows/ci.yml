@@ -1,0 +1,194 @@
+name: CI - Tests
+
+on:
+  push:
+    branches: [ main, develop, feature/*, hotfix/* ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Docker Buildx
+      uses: docker/setup-buildx-action@v3
+      
+    - name: Test Docker Compose
+      run: |
+        echo "🧪 Testing Docker Compose configuration..."
+        
+        # Test if docker-compose.yml is valid
+        docker-compose config
+        
+        # Test if all required files exist
+        required_files=(
+          "docker-compose.yml"
+          "dockerfile.wp"
+          "wp-init.sh"
+          "wp-config-create.sh"
+          "wait-for-db.sh"
+          "env.example"
+        )
+        
+        for file in "${required_files[@]}"; do
+          if [ -f "$file" ]; then
+            echo "✅ $file exists"
+          else
+            echo "❌ $file missing"
+            exit 1
+          fi
+        done
+        
+        echo "✅ Docker Compose configuration is valid"
+        
+    - name: Test Theme Structure
+      run: |
+        echo "🧪 Testing theme structure..."
+        
+        if [ -d "themes/my-theme" ]; then
+          echo "✅ Theme directory exists"
+          
+          # Check required theme files
+          theme_files=(
+            "style.css"
+            "index.php"
+            "header.php"
+            "footer.php"
+            "functions.php"
+          )
+          
+          for file in "${theme_files[@]}"; do
+            if [ -f "themes/my-theme/$file" ]; then
+              echo "✅ themes/my-theme/$file exists"
+            else
+              echo "❌ themes/my-theme/$file missing"
+              exit 1
+            fi
+          done
+        else
+          echo "❌ Theme directory missing"
+          exit 1
+        fi
+        
+        echo "✅ Theme structure is valid"
+        
+    - name: Test Scripts
+      run: |
+        echo "🧪 Testing scripts..."
+        
+        # Test if scripts are executable
+        scripts=(
+          "tests/test-suite.sh"
+          "tests/performance-test.sh"
+          "setup-new-project.sh"
+        )
+        
+        for script in "${scripts[@]}"; do
+          if [ -f "$script" ]; then
+            if [ -x "$script" ]; then
+              echo "✅ $script is executable"
+            else
+              echo "❌ $script is not executable"
+              exit 1
+            fi
+          else
+            echo "⚠️ $script not found (optional)"
+          fi
+        done
+        
+        echo "✅ Scripts are valid"
+        
+    - name: Test Environment Configuration
+      run: |
+        echo "🧪 Testing environment configuration..."
+        
+        # Test if env.example has required variables
+        required_vars=(
+          "DB_NAME"
+          "DB_USER"
+          "DB_PASS"
+          "WORDPRESS_TITLE"
+          "WORDPRESS_ADMIN_USER"
+          "WORDPRESS_ADMIN_PASSWORD"
+          "WORDPRESS_ADMIN_EMAIL"
+          "WP_URL"
+        )
+        
+        for var in "${required_vars[@]}"; do
+          if grep -q "^${var}=" env.example; then
+            echo "✅ $var is defined in env.example"
+          else
+            echo "❌ $var missing in env.example"
+            exit 1
+          fi
+        done
+        
+        echo "✅ Environment configuration is valid"
+        
+    - name: Test Security
+      run: |
+        echo "🧪 Testing security configuration..."
+        
+        # Check if .env is in .gitignore
+        if grep -q "\.env" .gitignore; then
+          echo "✅ .env is properly ignored"
+        else
+          echo "❌ .env should be in .gitignore"
+          exit 1
+        fi
+        
+        # Check for sensitive files
+        sensitive_files=(
+          ".env"
+          "wp-config.php"
+          "*.sql"
+        )
+        
+        for pattern in "${sensitive_files[@]}"; do
+          if git ls-files | grep -q "$pattern"; then
+            echo "❌ $pattern should not be committed"
+            exit 1
+          else
+            echo "✅ $pattern is not committed"
+          fi
+        done
+        
+        echo "✅ Security configuration is valid"
+        
+    - name: Test Documentation
+      run: |
+        echo "🧪 Testing documentation..."
+        
+        # Check if README exists and has content
+        if [ -f "README.md" ] && [ -s "README.md" ]; then
+          echo "✅ README.md exists and has content"
+        else
+          echo "❌ README.md missing or empty"
+          exit 1
+        fi
+        
+        # Check if tests README exists
+        if [ -f "tests/README.md" ]; then
+          echo "✅ tests/README.md exists"
+        else
+          echo "⚠️ tests/README.md missing (optional)"
+        fi
+        
+        echo "✅ Documentation is valid"
+        
+    - name: Test Results
+      run: |
+        echo ""
+        echo "🎉 All CI tests passed!"
+        echo "✅ Docker configuration: Valid"
+        echo "✅ Theme structure: Valid"
+        echo "✅ Scripts: Valid"
+        echo "✅ Environment: Valid"
+        echo "✅ Security: Valid"
+        echo "✅ Documentation: Valid"
+        echo ""
+        echo "🚀 Ready for deployment!"

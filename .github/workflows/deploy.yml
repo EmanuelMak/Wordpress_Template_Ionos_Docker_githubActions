@@ -1,0 +1,127 @@
+name: Deploy to IONOS
+
+on:
+  push:
+    branches: [ prod ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        
+    - name: Install IONOS CLI
+      run: |
+        npm install -g @ionos/cli
+        
+    - name: Create deployment package
+      run: |
+        echo "📦 Creating deployment package..."
+        
+        # Create deployment directory
+        mkdir -p deployment
+        
+        # Copy essential files
+        cp -r themes/ deployment/
+        cp -r media/ deployment/
+        cp docker-compose.yml deployment/
+        cp dockerfile.wp deployment/
+        cp wp-init.sh deployment/
+        cp wp-config-create.sh deployment/
+        cp wait-for-db.sh deployment/
+        cp env.example deployment/
+        cp taskfile.yml deployment/
+        cp README.md deployment/
+        cp BRANCH_STRATEGY.md deployment/
+        
+        # Create deployment ZIP
+        cd deployment
+        zip -r ../deployment.zip .
+        cd ..
+        
+        echo "✅ Deployment package created"
+        
+    - name: Run comprehensive tests before deployment
+      run: |
+        echo "🧪 Running comprehensive pre-deployment tests..."
+        
+        # Test if deployment package was created
+        if [ -f "deployment.zip" ]; then
+          echo "✅ Deployment package created successfully"
+        else
+          echo "❌ Deployment package creation failed"
+          exit 1
+        fi
+        
+        # Test package contents
+        echo "📦 Package contents:"
+        unzip -l deployment.zip | head -10
+        
+        # Test package integrity
+        if unzip -t deployment.zip > /dev/null 2>&1; then
+          echo "✅ Package integrity verified"
+        else
+          echo "❌ Package integrity check failed"
+          exit 1
+        fi
+        
+        # Test package size (should not be empty)
+        PACKAGE_SIZE=$(stat -f%z deployment.zip 2>/dev/null || stat -c%s deployment.zip 2>/dev/null || echo "0")
+        if [ "$PACKAGE_SIZE" -gt 1000 ]; then
+          echo "✅ Package size: ${PACKAGE_SIZE} bytes"
+        else
+          echo "❌ Package seems too small: ${PACKAGE_SIZE} bytes"
+          exit 1
+        fi
+        
+        echo "✅ All pre-deployment tests passed"
+        
+    - name: Deploy to IONOS
+      run: |
+        echo "🚀 Deploying to IONOS..."
+        
+        # Extract deployment package
+        unzip deployment.zip -d temp_deploy/
+        
+        # Upload files via SFTP
+        echo "📤 Uploading files to IONOS..."
+        
+        # Create SFTP batch file
+        cat > sftp_batch.txt << EOF
+        cd ${{ secrets.DEPLOY_PATH }}
+        put -r temp_deploy/*
+        bye
+        EOF
+        
+        # Execute SFTP upload
+        sftp -b sftp_batch.txt ${{ secrets.IONOS_USERNAME }}@${{ secrets.IONOS_HOST }}
+        
+        echo "✅ Deployment completed"
+        
+    - name: Verify deployment
+      run: |
+        echo "🔍 Verifying deployment..."
+        
+        # Test if website is accessible
+        if curl -s -o /dev/null -w "%{http_code}" ${{ secrets.WEBSITE_URL }} | grep -q "200\|301\|302"; then
+          echo "✅ Website is accessible"
+        else
+          echo "⚠️ Website might not be accessible yet (this is normal for new deployments)"
+        fi
+        
+        echo "✅ Deployment verification completed"
+        
+    - name: Notify deployment
+      run: |
+        echo "🎉 Deployment to IONOS completed successfully!"
+        echo "🌐 Website: ${{ secrets.WEBSITE_URL }}"
+        echo "📁 Deploy Path: ${{ secrets.DEPLOY_PATH }}"
+        echo "⏰ Deployment Time: $(date)"

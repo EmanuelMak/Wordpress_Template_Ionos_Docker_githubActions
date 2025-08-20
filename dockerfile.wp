@@ -1,0 +1,54 @@
+FROM wordpress:6.4.3-php8.1-apache
+
+# Set environment variables
+ENV WORDPRESS_VERSION=6.4.3
+ENV PHP_VERSION=8.1
+
+# Increase PHP memory limit and optimize settings
+RUN echo "memory_limit = 256M" > /usr/local/etc/php/conf.d/memory-limit.ini && \
+    echo "upload_max_filesize = 64M" >> /usr/local/etc/php/conf.d/memory-limit.ini && \
+    echo "post_max_size = 64M" >> /usr/local/etc/php/conf.d/memory-limit.ini && \
+    echo "max_execution_time = 300" >> /usr/local/etc/php/conf.d/memory-limit.ini
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    unzip \
+    curl \
+    default-mysql-client \
+    git \
+    nano \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install WP-CLI
+RUN curl -O https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar && \
+    chmod +x wp-cli.phar && \
+    mv wp-cli.phar /usr/local/bin/wp
+
+# Create custom directories
+RUN mkdir -p /var/www/html/wp-content/themes/custom && \
+    mkdir -p /var/www/html/wp-content/uploads/custom-media && \
+    chown -R www-data:www-data /var/www/html/wp-content
+
+# Copy custom scripts
+COPY wp-init.sh /usr/local/bin/wp-init.sh
+COPY wp-config-create.sh /usr/local/bin/wp-config-create.sh
+COPY wait-for-db.sh /usr/local/bin/wait-for-db.sh
+
+# Make scripts executable
+RUN chmod +x /usr/local/bin/wp-init.sh && \
+    chmod +x /usr/local/bin/wp-config-create.sh && \
+    chmod +x /usr/local/bin/wait-for-db.sh
+
+# Apache optimization
+RUN a2enmod rewrite && \
+    a2enmod headers && \
+    a2enmod expires
+
+# Security: Remove default WordPress files
+RUN rm -f /var/www/html/readme.html && \
+    rm -f /var/www/html/license.txt && \
+    rm -f /var/www/html/wp-config-sample.php
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost/ || exit 1
